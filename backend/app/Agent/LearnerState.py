@@ -1,5 +1,17 @@
-from typing import TypedDict, Annotated
+from typing import Annotated, Any
+from typing_extensions import TypedDict
 import operator
+
+class SwarmWorkerResult(TypedDict):
+    source_type: str
+    raw_text: str
+    source_url: str
+    title: str
+    metadata: dict
+
+class SwarmQuery(TypedDict):
+    engine: str
+    query: str
 
 class LearnerState(TypedDict):
     """
@@ -30,3 +42,8 @@ class LearnerState(TypedDict):
     
     # Routing Flag
     next_route: str
+
+    # --- Swarm Sub-Graph State ---
+    swarm_queries: list[SwarmQuery]
+    swarm_raw_results: Annotated[list[SwarmWorkerResult], operator.add]
+    content_module: str

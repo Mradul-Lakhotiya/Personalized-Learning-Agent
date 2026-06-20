@@ -9,20 +9,9 @@ from .Nodes.KnowledgeAssessor import knowledge_assessor_node
 from .Nodes.AnswerEvaluator import answer_evaluator_node
 from .Nodes.PathRerouter import path_rerouter_node
 from .Nodes.UtilityNodes import error_handler_node, progress_reporter_node
+from .Swarm.SwarmGraph import swarm_graph
 
-# --- Dummy Swarm Node for Phase 2 ---
-async def dummy_content_swarm(state: LearnerState) -> dict:
-    """Placeholder for Phase 3 Multi-Agent Swarm"""
-    return {
-        "current_question": {
-            "type": "content",
-            "text": f"SWARM TRIGGERED: Teaching topic '{state.get('current_topic')}'. (Phase 3 implementation)",
-            "options": [],
-            "expected": "",
-            "source": "swarm"
-        },
-        "next_route": "assessor" # After teaching, go back to testing
-    }
+# (Dummy swarm node removed)
 
 # --- Routing Functions ---
 def route_after_evaluation(state: LearnerState) -> str:
@@ -49,7 +38,7 @@ workflow.add_node("curriculum_planner", curriculum_planner_node)
 workflow.add_node("knowledge_assessor", knowledge_assessor_node)
 workflow.add_node("answer_evaluator", answer_evaluator_node)
 workflow.add_node("path_rerouter", path_rerouter_node)
-workflow.add_node("content_delivery", dummy_content_swarm)
+workflow.add_node("content_delivery", swarm_graph)
 workflow.add_node("error_handler", error_handler_node)
 workflow.add_node("progress_reporter", progress_reporter_node)
 
