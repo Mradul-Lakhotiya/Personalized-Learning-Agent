@@ -8,7 +8,8 @@ from .Nodes.CurriculumPlanner import curriculum_planner_node
 from .Nodes.KnowledgeAssessor import knowledge_assessor_node
 from .Nodes.AnswerEvaluator import answer_evaluator_node
 from .Nodes.PathRerouter import path_rerouter_node
-from .Nodes.UtilityNodes import error_handler_node, progress_reporter_node
+from .Nodes.ErrorHandler import error_handler_node
+from .Nodes.ProgressReporter import progress_reporter_node
 from .Swarm.SwarmGraph import swarm_graph
 
 # ── Routing Functions ────────────────────────────────────────────────────────
