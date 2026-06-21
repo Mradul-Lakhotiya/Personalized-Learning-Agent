@@ -26,19 +26,29 @@ export function QuestionCard({ question, onSubmit, disabled }) {
 
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         {question.type === 'multiple_choice' ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             {question.options.map((opt, i) => (
-              <label key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', cursor: 'pointer' }}>
-                <input 
-                  type="radio" 
-                  name="answer" 
-                  value={opt} 
-                  onChange={(e) => setAnswer(e.target.value)}
-                  checked={answer === opt}
-                  disabled={disabled}
-                />
+              <button
+                key={i}
+                type="button"
+                onClick={() => setAnswer(opt)}
+                disabled={disabled}
+                className="transition-all"
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'flex-start',
+                  padding: '1rem',
+                  background: answer === opt ? 'rgba(6, 182, 212, 0.2)' : 'rgba(30, 41, 59, 0.5)',
+                  border: answer === opt ? '1px solid #06b6d4' : '1px solid var(--glass-border)',
+                  borderRadius: '8px',
+                  color: answer === opt ? '#22d3ee' : '#cbd5e1',
+                  cursor: disabled ? 'not-allowed' : 'pointer',
+                  opacity: disabled ? 0.6 : 1,
+                  textAlign: 'left',
+                  fontSize: '1rem'
+                }}
+              >
                 {opt}
-              </label>
+              </button>
             ))}
           </div>
         ) : question.type === 'code' ? (
