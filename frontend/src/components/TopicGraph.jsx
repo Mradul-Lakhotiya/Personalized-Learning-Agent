@@ -2,53 +2,80 @@ import React, { useMemo } from 'react';
 import { ReactFlow, Controls, Background } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
-export function TopicGraph({ progressData }) {
+export function TopicGraph({ progressData = [], curriculaData = [] }) {
   const { nodes, edges } = useMemo(() => {
-    if (!progressData || progressData.length === 0) return { nodes: [], edges: [] };
+    if (!curriculaData || curriculaData.length === 0) return { nodes: [], edges: [] };
 
     const newNodes = [];
     const newEdges = [];
 
-    // Simple layout logic for horizontal flow
-    progressData.forEach((item, index) => {
-      const isMastered = item.status === 'mastered';
-      const percentage = Math.round(item.mastery_score * 100);
+    // Map the curriculum linear path
+    curriculaData.forEach((item, index) => {
+      // Check if there is progress for this topic name
+      const progressItem = progressData.find(p => p.topics?.name === item.topic);
+      const isMastered = item.status === 'completed' || (progressItem && progressItem.status === 'mastered');
+      const isActive = item.status === 'active';
+      const isPending = item.status === 'pending';
+      
+      const percentage = progressItem ? Math.round(progressItem.mastery_score * 100) : 0;
+      
+      let background = 'rgba(15, 23, 42, 0.9)'; // default dark
+      let border = '2px solid #334155';
+      let shadow = 'none';
+      let textColor = 'text-slate-400';
+      
+      if (isMastered) {
+        background = 'rgba(6, 182, 212, 0.9)'; // Cyan
+        border = '2px solid #0891b2';
+        shadow = '0 0 15px rgba(6, 182, 212, 0.5)';
+        textColor = 'text-white';
+      } else if (isActive) {
+        background = 'rgba(139, 92, 246, 0.9)'; // Purple
+        border = '2px solid #a855f7';
+        shadow = '0 0 20px rgba(168, 85, 247, 0.6)';
+        textColor = 'text-white';
+      }
       
       newNodes.push({
-        id: item.topic_id || index.toString(),
+        id: item.id || index.toString(),
         position: { x: index * 250 + 50, y: 150 + (index % 2 === 0 ? 0 : 100) },
         data: { 
           label: (
             <div className="flex flex-col items-center justify-center p-2">
-              <span className="font-bold text-sm text-slate-800">{item.topics?.name || 'Topic'}</span>
-              <span className="text-xs text-slate-600 font-mono mt-1">{percentage}% Mastery</span>
+              <span className={`font-bold text-sm ${textColor}`}>{item.topic || 'Topic'}</span>
+              <span className={`text-xs font-mono mt-1 ${isMastered || isActive ? 'text-white/80' : 'text-slate-500'}`}>
+                {isPending ? 'Locked 🔒' : `${percentage}% Mastery`}
+              </span>
             </div>
           ) 
         },
         style: {
-          background: isMastered ? 'rgba(6, 182, 212, 0.9)' : 'rgba(255, 255, 255, 0.9)',
-          border: isMastered ? '2px solid #0891b2' : '2px solid #cbd5e1',
+          background,
+          border,
           borderRadius: '8px',
           padding: '5px',
           width: 150,
-          boxShadow: isMastered ? '0 0 15px rgba(6, 182, 212, 0.5)' : 'none',
+          boxShadow: shadow,
         }
       });
 
-      // Connect linearly as a simple default
+      // Connect linearly
       if (index > 0) {
         newEdges.push({
-          id: `e-${progressData[index-1].topic_id}-${item.topic_id}`,
-          source: progressData[index-1].topic_id || (index-1).toString(),
-          target: item.topic_id || index.toString(),
-          animated: !isMastered,
-          style: { stroke: isMastered ? '#06b6d4' : '#64748b', strokeWidth: 2 }
+          id: `e-${curriculaData[index-1].id}-${item.id}`,
+          source: curriculaData[index-1].id || (index-1).toString(),
+          target: item.id || index.toString(),
+          animated: isActive || isPending,
+          style: { 
+            stroke: isMastered ? '#06b6d4' : (isActive ? '#a855f7' : '#334155'), 
+            strokeWidth: 2 
+          }
         });
       }
     });
 
     return { nodes: newNodes, edges: newEdges };
-  }, [progressData]);
+  }, [progressData, curriculaData]);
 
   if (nodes.length === 0) {
     return (

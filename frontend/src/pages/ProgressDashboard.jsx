@@ -24,8 +24,18 @@ export function ProgressDashboard() {
         `)
         .eq('user_id', user.id);
         
-      if (!error && data) {
-        setProgressData(data);
+      const { data: curriculaData, error: currError } = await supabase
+        .from('curricula')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('unit_index', { ascending: true });
+        
+      if (!error && !currError) {
+        // Merge them or keep separate? We can pass curriculaData directly to the components!
+        setProgressData({
+          progress: data || [],
+          curricula: curriculaData || []
+        });
       }
       setLoading(false);
     };
@@ -44,19 +54,19 @@ export function ProgressDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="glass-panel p-6 rounded-xl">
           <h3 className="text-lg font-semibold mb-4 text-slate-200">Skill Map</h3>
-          <SkillMap progressData={progressData} />
+          <SkillMap progressData={progressData.progress || []} />
         </div>
         
         <div className="glass-panel p-6 rounded-xl">
           <h3 className="text-lg font-semibold mb-4 text-slate-200">Curriculum Timeline</h3>
-          <CurriculumTimeline progressData={progressData} />
+          <CurriculumTimeline progressData={progressData.progress || []} curriculaData={progressData.curricula || []} />
         </div>
       </div>
       
       <div className="glass-panel p-6 rounded-xl mt-4">
         <h3 className="text-lg font-semibold mb-4 text-slate-200">Knowledge Graph</h3>
         <div className="h-96 w-full text-slate-500 border border-slate-700/50 rounded-lg overflow-hidden">
-          <TopicGraph progressData={progressData} />
+          <TopicGraph progressData={progressData.progress || []} curriculaData={progressData.curricula || []} />
         </div>
       </div>
     </div>

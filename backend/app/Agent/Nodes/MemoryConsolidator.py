@@ -22,7 +22,7 @@ async def consolidate_session(state: dict[str, Any]) -> None:
     user_id = state.get("user_id")
     session_id = state.get("session_id")
     if not user_id or not session_id:
-        print("[MemoryConsolidator] ⚠️ Missing user_id or session_id. Aborting.")
+        print("[MemoryConsolidator] Warning: Missing user_id or session_id. Aborting.")
         return
 
     print(f"[MemoryConsolidator] Starting background consolidation for session {session_id[:8]}...")
@@ -52,7 +52,7 @@ async def consolidate_session(state: dict[str, Any]) -> None:
             result = await safe_ainvoke_gemini(build_chain, {"history": history_text[:8000]}) # limit context window
             summary = result.content if hasattr(result, "content") else str(result)
         except Exception as e:
-            print(f"[MemoryConsolidator] ⚠️ Gemini summary failed (non-fatal): {e}")
+            print(f"[MemoryConsolidator] Warning: Gemini summary failed (non-fatal): {e}")
             summary = "Session finished, but summary generation failed."
 
     # ── 2. Write to `sessions` table (Postgres) ───────────────────────────────
@@ -66,9 +66,9 @@ async def consolidate_session(state: dict[str, Any]) -> None:
                 "ended_at": datetime.now(timezone.utc).isoformat()
             }).execute
         )
-        print(f"[MemoryConsolidator] ✅ Saved session summary to Postgres.")
+        print(f"[MemoryConsolidator] [SUCCESS] Saved session summary to Postgres.")
     except Exception as e:
-        print(f"[MemoryConsolidator] ⚠️ Failed to save session to Postgres: {e}")
+        print(f"[MemoryConsolidator] Warning: Failed to save session to Postgres: {e}")
 
     # ── 3. Batch insert `answered_questions` (Postgres) ───────────────────────
     answered = state.get("answered_questions", [])
@@ -80,7 +80,6 @@ async def consolidate_session(state: dict[str, Any]) -> None:
                 "session_id": session_id,
                 "question_text": ans.get("question", ""),
                 "user_answer": ans.get("answer", ""),
-                "is_correct": ans.get("score", 0.0) >= 0.8,
                 "score": ans.get("score", 0.0),
                 "feedback": ans.get("feedback", ""),
                 "topic": ans.get("topic", state.get("current_topic", "")),
@@ -89,9 +88,9 @@ async def consolidate_session(state: dict[str, Any]) -> None:
             await asyncio.to_thread(
                 db.client.table("answered_questions").insert(payloads).execute
             )
-            print(f"[MemoryConsolidator] ✅ Inserted {len(payloads)} answered questions to Postgres.")
+            print(f"[MemoryConsolidator] [SUCCESS] Inserted {len(payloads)} answered questions to Postgres.")
         except Exception as e:
-            print(f"[MemoryConsolidator] ⚠️ Failed to insert answered questions: {e}")
+            print(f"[MemoryConsolidator] Warning: Failed to insert answered questions: {e}")
 
     # ── 4. Upsert Semantic Memory (Pinecone) ──────────────────────────────────
     try:
@@ -106,8 +105,8 @@ async def consolidate_session(state: dict[str, Any]) -> None:
             }],
             namespace=namespace
         )
-        print(f"[MemoryConsolidator] ✅ Upserted semantic memory to Pinecone namespace: {namespace}.")
+        print(f"[MemoryConsolidator] [SUCCESS] Upserted semantic memory to Pinecone namespace: {namespace}.")
     except Exception as e:
-        print(f"[MemoryConsolidator] ⚠️ Failed to upsert semantic memory to Pinecone: {e}")
+        print(f"[MemoryConsolidator] Warning: Failed to upsert semantic memory to Pinecone: {e}")
 
     print(f"[MemoryConsolidator] 🎉 Consolidation complete for session {session_id[:8]}")
