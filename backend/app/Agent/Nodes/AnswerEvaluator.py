@@ -4,7 +4,7 @@ import asyncio
 import urllib.request
 from pydantic import BaseModel, Field
 from ..LearnerState import LearnerState
-from ..Tools.LlmFactory import LlmFactory, safe_ainvoke
+from ..Tools.LlmFactory import LlmFactory, safe_ainvoke_groq
 from langchain_core.prompts import PromptTemplate
 
 class EvalResult(BaseModel):
@@ -48,7 +48,10 @@ async def answer_evaluator_node(state: LearnerState) -> dict:
                 req = urllib.request.Request(
                     f"{api_url}/execute",
                     data=json.dumps(payload).encode('utf-8'),
-                    headers={'Content-Type': 'application/json'},
+                    headers={
+                        'Content-Type': 'application/json',
+                        'User-Agent': 'PersonalizedLearningAgent/1.0'
+                    },
                     method='POST'
                 )
                 with urllib.request.urlopen(req, timeout=10) as response:
@@ -73,13 +76,11 @@ async def answer_evaluator_node(state: LearnerState) -> dict:
                     "error": ""
                 }
         except Exception as e:
-            return {"error": f"Piston execution failed: {str(e)}"}
+            print(f"[Warning] Piston execution failed: {str(e)}. Falling back to LLM evaluation.")
+            pass
             
-    # --- Text / General Evaluation (Gemini) ---
+    # --- Text / General Evaluation (Groq) ---
     try:
-        llm = LlmFactory.get_llm(temperature=0.1)
-        structured_llm = llm.with_structured_output(EvalResult)
-        
         prompt = PromptTemplate.from_template(
             "You are an expert grader. Grade the student's answer.\n\n"
             "Question: {question}\n"
@@ -87,16 +88,18 @@ async def answer_evaluator_node(state: LearnerState) -> dict:
             "Student's Answer: {answer}\n\n"
             "Provide a score from 0.0 to 1.0, feedback, and any misconceptions."
         )
-        
-        chain = prompt | structured_llm
+        def build_chain(api_key: str):
+            from langchain_groq import ChatGroq
+            llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.0, groq_api_key=api_key)
+            structured_llm = llm.with_structured_output(EvalResult)
+            return prompt | structured_llm
         
         inputs = {
             "question": question.get("text"),
             "expected": question.get("expected"),
             "answer": user_answer
         }
-        
-        result: EvalResult = await safe_ainvoke(chain, inputs)
+        result: EvalResult = await safe_ainvoke_groq(build_chain, inputs)
         
         return {
             "evaluation": {

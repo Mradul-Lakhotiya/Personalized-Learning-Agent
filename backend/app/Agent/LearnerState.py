@@ -23,6 +23,7 @@ class LearnerState(TypedDict):
     # State Data
     user_profile: dict
     current_topic: str
+    current_topic_id: str
     
     # Current Interaction
     current_question: dict

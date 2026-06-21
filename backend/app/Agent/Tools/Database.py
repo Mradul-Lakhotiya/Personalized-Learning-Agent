@@ -51,3 +51,18 @@ class Database:
         )
         data = response.data
         return data[0] if data else {}
+
+    async def get_or_create_topic(self, name: str, description: str = "") -> str:
+        """Gets a topic by name, or creates it if it doesn't exist. Returns the UUID."""
+        response = await asyncio.to_thread(
+            self.client.table("topics").select("id").eq("name", name).execute
+        )
+        if response.data:
+            return response.data[0]["id"]
+            
+        # Create it
+        payload = {"name": name, "description": description}
+        insert_resp = await asyncio.to_thread(
+            self.client.table("topics").insert(payload).execute
+        )
+        return insert_resp.data[0]["id"]

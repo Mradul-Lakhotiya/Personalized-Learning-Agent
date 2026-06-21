@@ -2,17 +2,18 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from .models import StartSessionRequest, SubmitAnswerRequest
 from .Agent.GraphService import GraphService
+from .api.auth import get_current_user
 
 router = APIRouter(prefix="/api/v1/agent", tags=["Agent Operations"])
 
 @router.post("/start")
-async def start_session(request: StartSessionRequest):
+async def start_session(request: StartSessionRequest, user_id: str = Depends(get_current_user)):
     """
     Initializes a new LangGraph session or resumes an existing one.
     Returns a Server-Sent Events (SSE) stream of execution updates.
     """
     generator = await GraphService.start_session(
-        user_id=request.user_id,
+        user_id=user_id,
         thread_id=request.thread_id
     )
     
@@ -22,14 +23,14 @@ async def start_session(request: StartSessionRequest):
     )
 
 @router.post("/reply")
-async def submit_answer(request: SubmitAnswerRequest):
+async def submit_answer(request: SubmitAnswerRequest, user_id: str = Depends(get_current_user)):
     """
     Injects the user's answer into a paused graph state and resumes execution.
     Returns a Server-Sent Events (SSE) stream of execution updates.
     """
     generator = await GraphService.submit_answer(
         thread_id=request.thread_id,
-        answer_text=request.answer_text
+        answer_text=request.answer
     )
     
     return StreamingResponse(

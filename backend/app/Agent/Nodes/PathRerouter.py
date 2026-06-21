@@ -9,17 +9,19 @@ async def path_rerouter_node(state: LearnerState) -> dict:
     that the conditional edges in Graph.py will use to route).
     """
     user_id = state.get("user_id")
-    topic = state.get("current_topic")
+    topic_name = state.get("current_topic")
+    topic_id = state.get("current_topic_id")
     evaluation = state.get("evaluation", {})
     score = evaluation.get("score", 0.0)
     
-    if not user_id or not topic:
-        return {"error": "Missing user_id or current_topic for Path Rerouter"}
+    if not user_id or not topic_id:
+        return {"error": "Missing user_id or current_topic_id for Path Rerouter"}
         
+    # 1. Update progress in DB based on evaluation
     db = Database()
     
-    # Fetch current progress
-    progress = await db.get_topic_progress(user_id, topic)
+    # We fetch existing progress (if any)
+    progress = await db.get_topic_progress(user_id, topic_id)
     
     if not progress:
         current_mastery = 0.0
@@ -35,7 +37,7 @@ async def path_rerouter_node(state: LearnerState) -> dict:
         status = "mastered"
         
     # Update DB
-    await db.upsert_topic_progress(user_id, topic, {
+    await db.upsert_topic_progress(user_id, topic_id, {
         "mastery_score": new_mastery,
         "status": status,
         "last_assessed_at": "now()" # In a real app, pass ISO timestamp

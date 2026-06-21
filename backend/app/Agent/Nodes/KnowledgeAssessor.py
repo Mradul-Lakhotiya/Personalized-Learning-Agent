@@ -1,7 +1,7 @@
 import json
 from pydantic import BaseModel, Field
 from ..LearnerState import LearnerState
-from ..Tools.LlmFactory import LlmFactory, safe_ainvoke
+from ..Tools.LlmFactory import LlmFactory, safe_ainvoke_groq
 from ..Tools.VectorStore import VectorStore
 from langchain_core.prompts import PromptTemplate
 
@@ -16,6 +16,10 @@ async def knowledge_assessor_node(state: LearnerState) -> dict:
     Node 4: Knowledge Assessor
     Generates or retrieves a question to test the user's mastery of the current topic.
     """
+    err = state.get("error")
+    if err:
+        return {"error": err} # Preserve previous errors like CurriculumPlanner
+        
     topic = state.get("current_topic")
     if not topic:
         return {"error": "No current_topic found in state"}
@@ -44,17 +48,19 @@ async def knowledge_assessor_node(state: LearnerState) -> dict:
             }
             
         # 2. If no cache match, generate a new question using Gemini
-        llm = LlmFactory.get_llm(temperature=0.7)
-        structured_llm = llm.with_structured_output(QuestionFormat)
-        
         prompt = PromptTemplate.from_template(
             "Generate a challenging question to test the user's knowledge on: {topic}.\n"
             "Decide whether 'mcq', 'open_ended', or 'code' is best for this topic.\n"
             "Provide the question, any options (if MCQ), and a strict rubric or expected answer."
         )
         
-        chain = prompt | structured_llm
-        result: QuestionFormat = await safe_ainvoke(chain, {"topic": topic})
+        def build_chain(api_key: str):
+            from langchain_groq import ChatGroq
+            llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.7, groq_api_key=api_key)
+            structured_llm = llm.with_structured_output(QuestionFormat)
+            return prompt | structured_llm
+            
+        result: QuestionFormat = await safe_ainvoke_groq(build_chain, {"topic": topic})
         
         # We don't cache it into "questions" immediately!
         # It goes to "questions_staging" later if the user gets it right.
