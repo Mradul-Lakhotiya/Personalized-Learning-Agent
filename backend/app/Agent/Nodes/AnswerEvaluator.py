@@ -1,10 +1,6 @@
-import json
-import os
-import asyncio
-import urllib.request
 from pydantic import BaseModel, Field
 from ..LearnerState import LearnerState
-from ..Tools.LlmFactory import LlmFactory, safe_ainvoke_groq
+from ..Tools.LlmFactory import safe_ainvoke_groq, safe_ainvoke_gemini
 from langchain_core.prompts import PromptTemplate
 
 class EvalResult(BaseModel):
@@ -14,93 +10,75 @@ class EvalResult(BaseModel):
 
 async def answer_evaluator_node(state: LearnerState) -> dict:
     """
-    Node 6: Answer Evaluator
-    Grades the user's answer. Uses LLM for text, and Piston API for code execution.
+    Node 5: Answer Evaluator
+    Grades the user's answer against the question rubric.
+
+    LLM Routing:
+    - Groq (llama-3.3-70b-versatile): Fast consolidation — comparing the answer
+      against the rubric, scoring, and extracting misconceptions (data processing).
+    - Gemini (gemini-2.5-flash): NOT used here — reserved for generation tasks.
     """
     question = state.get("current_question", {})
     user_answer = state.get("user_answer", "")
-    
+
     if not question or not user_answer:
         return {"error": "Missing question or user answer in state"}
-        
-    q_type = question.get("type")
-    
-    # --- Code Evaluation (Piston) ---
-    if q_type == "code":
-        try:
-            # Assuming user_answer is the code snippet, and question['expected'] contains test cases.
-            # For simplicity in this scaffold, we just execute the code to see if it runs cleanly.
-            api_url = os.getenv("PISTON_API_URL", "https://emkc.org/api/v2/piston")
-            
-            payload = {
-                "language": "python",
-                "version": "3.10.0",
-                "files": [{"content": user_answer}],
-                "stdin": "",
-                "args": [],
-                "compile_timeout": 10000,
-                "run_timeout": 3000,
-                "compile_memory_limit": -1,
-                "run_memory_limit": -1
-            }
-            
-            def run_piston():
-                req = urllib.request.Request(
-                    f"{api_url}/execute",
-                    data=json.dumps(payload).encode('utf-8'),
-                    headers={
-                        'Content-Type': 'application/json',
-                        'User-Agent': 'PersonalizedLearningAgent/1.0'
-                    },
-                    method='POST'
-                )
-                with urllib.request.urlopen(req, timeout=10) as response:
-                    return json.loads(response.read().decode('utf-8'))
-                    
-            piston_result = await asyncio.to_thread(run_piston)
-            
-            run_output = piston_result.get("run", {})
-            code = run_output.get("code", 1)
-            output = run_output.get("output", "")
-            
-            if code == 0:
-                # Code ran successfully, now ask LLM to verify if it actually solves the prompt
-                pass
-            else:
-                return {
-                    "evaluation": {
-                        "score": 0.0,
-                        "feedback": f"Your code threw an error:\n{output}",
-                        "misconceptions": ["Syntax or Runtime Error"]
-                    },
-                    "error": ""
-                }
-        except Exception as e:
-            print(f"[Warning] Piston execution failed: {str(e)}. Falling back to LLM evaluation.")
-            pass
-            
-    # --- Text / General Evaluation (Groq) ---
+
+    # ── Input Sanity Check ──────────────────────────────────────────────────
+    if len(user_answer.strip()) < 3:
+        return {
+            "evaluation": {
+                "score": 0.0,
+                "feedback": "Please give a real answer — I can't evaluate that.",
+                "misconceptions": []
+            },
+            "error": ""
+        }
+
+    q_type = question.get("type", "open_ended")
+
+    # ── MCQ: Zero-cost exact match (no LLM needed) ──────────────────────────
+    if q_type == "mcq":
+        expected = question.get("expected", "")
+        is_correct = user_answer.strip().lower() == expected.strip().lower()
+        return {
+            "evaluation": {
+                "score": 1.0 if is_correct else 0.0,
+                "feedback": "Correct!" if is_correct else f"The correct answer was: {expected}",
+                "misconceptions": [] if is_correct else ["Incorrect option selected"]
+            },
+            "error": ""
+        }
+
+    # ── All other types: Groq consolidates/grades the answer ────────────────
+    # Groq is used here because this is fundamentally a data consolidation task:
+    # compare the user's answer text against the rubric and extract a structured grade.
     try:
         prompt = PromptTemplate.from_template(
-            "You are an expert grader. Grade the student's answer.\n\n"
+            "You are an expert grader. Grade the student's answer carefully.\n\n"
             "Question: {question}\n"
-            "Expected/Rubric: {expected}\n"
+            "Expected Answer / Rubric: {expected}\n"
+            "Question Type: {q_type}\n"
             "Student's Answer: {answer}\n\n"
-            "Provide a score from 0.0 to 1.0, feedback, and any misconceptions."
+            "Evaluate whether the student's answer demonstrates understanding of the key concepts.\n"
+            "Provide a score from 0.0 to 1.0, constructive feedback, and any specific misconceptions."
         )
+
         def build_chain(api_key: str):
             from langchain_groq import ChatGroq
             llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.0, groq_api_key=api_key)
             structured_llm = llm.with_structured_output(EvalResult)
             return prompt | structured_llm
-        
+
         inputs = {
-            "question": question.get("text"),
-            "expected": question.get("expected"),
+            "question": question.get("text", ""),
+            "expected": question.get("expected", ""),
+            "q_type": q_type,
             "answer": user_answer
         }
+
         result: EvalResult = await safe_ainvoke_groq(build_chain, inputs)
-        
+
         return {
             "evaluation": {
                 "score": result.score,
@@ -109,6 +87,6 @@ async def answer_evaluator_node(state: LearnerState) -> dict:
             },
             "error": ""
         }
-        
+
     except Exception as e:
         return {"error": f"Evaluator failed: {str(e)}"}
