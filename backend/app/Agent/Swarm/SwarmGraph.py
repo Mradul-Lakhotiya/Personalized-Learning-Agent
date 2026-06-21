@@ -6,34 +6,39 @@ from .Nodes.PracticalWorker import practical_worker_node
 from .Nodes.AcademicWorker import academic_worker_node
 from .Nodes.MultimediaWorker import multimedia_worker_node
 from .Nodes.Synthesizer import synthesizer_node
+from .Nodes.VectorIngestionGate import vector_ingestion_gate_node
 
-# --- Swarm Graph Assembly ---
-# We use the same LearnerState so it integrates seamlessly with the parent graph
+# ── Swarm Sub-Graph Assembly ──────────────────────────────────────────────────
+# Implements the parallel content fan-out/fan-in pattern from the architecture.
+# The parent graph treats this entire compiled sub-graph as a single node.
 swarm_workflow = StateGraph(LearnerState)
 
-# Add Nodes
-swarm_workflow.add_node("query_generator", query_generator_node)
-swarm_workflow.add_node("practical_worker", practical_worker_node)
-swarm_workflow.add_node("academic_worker", academic_worker_node)
-swarm_workflow.add_node("multimedia_worker", multimedia_worker_node)
-swarm_workflow.add_node("synthesizer", synthesizer_node)
+# Register all nodes
+swarm_workflow.add_node("query_generator",       query_generator_node)
+swarm_workflow.add_node("practical_worker",      practical_worker_node)
+swarm_workflow.add_node("academic_worker",       academic_worker_node)
+swarm_workflow.add_node("multimedia_worker",     multimedia_worker_node)
+swarm_workflow.add_node("synthesizer",           synthesizer_node)
+swarm_workflow.add_node("vector_ingestion_gate", vector_ingestion_gate_node)
 
-# Add Edges
 swarm_workflow.set_entry_point("query_generator")
 
-# Fan-out: One node branches to three parallel workers
+# ── Fan-Out: one query generator → three parallel workers ────────────────────
 swarm_workflow.add_edge("query_generator", "practical_worker")
 swarm_workflow.add_edge("query_generator", "academic_worker")
 swarm_workflow.add_edge("query_generator", "multimedia_worker")
 
-# Fan-in: All three workers must complete before synthesizer runs
-swarm_workflow.add_edge("practical_worker", "synthesizer")
-swarm_workflow.add_edge("academic_worker", "synthesizer")
+# ── Fan-In: all three workers complete → synthesizer ─────────────────────────
+# LangGraph automatically waits for ALL three workers before firing synthesizer
+# because of the `add` reducer on swarm_raw_results — it knows all branches
+# must return before the join point can proceed.
+swarm_workflow.add_edge("practical_worker",  "synthesizer")
+swarm_workflow.add_edge("academic_worker",   "synthesizer")
 swarm_workflow.add_edge("multimedia_worker", "synthesizer")
 
-# End
-swarm_workflow.add_edge("synthesizer", END)
+# ── After synthesis: persist to Pinecone, then exit ──────────────────────────
+swarm_workflow.add_edge("synthesizer",           "vector_ingestion_gate")
+swarm_workflow.add_edge("vector_ingestion_gate", END)
 
-# Compile the sub-graph
-# We do not use an interrupter here; it runs autonomously
+# Compile the sub-graph (no checkpointer — parent graph owns persistence)
 swarm_graph = swarm_workflow.compile()

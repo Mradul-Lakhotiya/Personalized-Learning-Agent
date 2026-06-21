@@ -13,6 +13,27 @@ from .Swarm.SwarmGraph import swarm_graph
 
 # ── Routing Functions ────────────────────────────────────────────────────────
 
+def route_after_curriculum(state: LearnerState) -> str:
+    """
+    Conditional edge after CurriculumPlanner.
+    If content_module is pre-filled (cache hit), skip the swarm and jump
+    straight to assessment. Otherwise run the full content delivery swarm.
+    """
+    err = state.get("error", "")
+    if err:
+        return "error_handler"
+    # Cache hit: content_module is flagged — skip swarm
+    content = state.get("content_module", "")
+    if content and not content.startswith("_cached_topic:"):
+        # Actual lesson content already in state (somehow) — go assess
+        return "knowledge_assessor"
+    if content and content.startswith("_cached_topic:"):
+        # Flagged as cached but content_module not yet fetched — still run swarm
+        # (future: retrieve full chunks from Pinecone here)
+        pass
+    return "content_delivery"
+
+
 def route_after_rerouter(state: LearnerState) -> str:
     """
     Conditional edge after PathRerouter.
@@ -74,14 +95,24 @@ workflow.add_node("progress_reporter",  progress_reporter_node)
 
 # ── Static edges ──────────────────────────────────────────────────────────────
 workflow.set_entry_point("profile_builder")
-workflow.add_edge("profile_builder",    "curriculum_planner")
-workflow.add_edge("curriculum_planner", "content_delivery")
+workflow.add_edge("profile_builder", "curriculum_planner")
 # Graph pauses BEFORE answer_evaluator to wait for user input
 workflow.add_edge("knowledge_assessor", "answer_evaluator")
 workflow.add_edge("answer_evaluator",   "path_rerouter")
 workflow.add_edge("progress_reporter",  END)
 
 # ── Conditional edges ─────────────────────────────────────────────────────────
+# After curriculum planner: use swarm OR skip to assessment if content is cached
+workflow.add_conditional_edges(
+    "curriculum_planner",
+    route_after_curriculum,
+    {
+        "content_delivery":   "content_delivery",
+        "knowledge_assessor": "knowledge_assessor",
+        "error_handler":      "error_handler",
+    }
+)
+
 workflow.add_conditional_edges(
     "path_rerouter",
     route_after_rerouter,

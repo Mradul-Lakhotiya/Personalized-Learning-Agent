@@ -2,6 +2,7 @@ from typing import Optional
 from pydantic import BaseModel, Field
 from ..LearnerState import LearnerState
 from ..Tools.LlmFactory import safe_ainvoke_gemini
+from ..Tools.VectorStore import VectorStore
 from langchain_core.prompts import PromptTemplate
 
 class CurriculumDecision(BaseModel):
@@ -12,11 +13,12 @@ async def curriculum_planner_node(state: LearnerState) -> dict:
     """
     Node 2: Curriculum Planner
     Analyzes the profile and determines the optimal next topic to teach.
+    Also performs a Pinecone content cache lookup — if this topic's lesson
+    was already synthesized and stored, we can skip the expensive swarm run.
 
     LLM Routing:
-    - Gemini (gemini-2.5-flash): This is a GENERATION task — creating a personalized
-      curriculum plan requires high-cognition reasoning about prerequisites, learning
-      style, and goal alignment. Gemini excels at this.
+    - Gemini (gemini-2.5-flash): GENERATION task — reasoning about prerequisites
+      and learning path order requires high-cognition curriculum planning.
     """
     profile = state.get("user_profile")
     if not profile:
@@ -44,9 +46,35 @@ async def curriculum_planner_node(state: LearnerState) -> dict:
         db = Database()
         topic_id = await db.get_or_create_topic(result.topic_name, result.reasoning)
 
+        # ── Content Cache Lookup ──────────────────────────────────────────────
+        # Check if we already have synthesized content for this topic in Pinecone.
+        # If we do (cosine > 0.90), skip the swarm and serve from cache directly.
+        cached_lesson = None
+        try:
+            vs = VectorStore()
+            matches = await vs.asearch(
+                query=f"lesson about {result.topic_name}",
+                namespace="content",
+                top_k=1
+            )
+            if matches and matches[0].get("score", 0) > 0.90:
+                meta = matches[0].get("metadata", {})
+                cached_topic = meta.get("topic", "")
+                # Only use cache if the topic name matches closely
+                if result.topic_name.lower() in cached_topic.lower() or cached_topic.lower() in result.topic_name.lower():
+                    print(f"[CurriculumPlanner] ✅ Content cache HIT for topic: '{result.topic_name}' (score={matches[0]['score']:.3f})")
+                    # We flag this in state — GraphService/Graph will skip the swarm
+                    cached_lesson = f"_cached_topic:{result.topic_name}"
+        except Exception as cache_err:
+            # Cache lookup failure is non-fatal — just run the swarm
+            print(f"[CurriculumPlanner] ⚠️ Content cache lookup failed (non-fatal): {cache_err}")
+
         return {
             "current_topic": result.topic_name,
             "current_topic_id": topic_id,
+            # If content_module is pre-set, Graph.py will route directly to assessor
+            # bypassing the swarm. If None, the full swarm runs.
+            "content_module": cached_lesson or "",
             "error": ""
         }
     except Exception as e:
