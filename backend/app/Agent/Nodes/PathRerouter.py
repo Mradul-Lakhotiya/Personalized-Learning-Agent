@@ -17,43 +17,56 @@ async def path_rerouter_node(state: LearnerState) -> dict:
     if not user_id or not topic_id:
         return {"error": "Missing user_id or current_topic_id for Path Rerouter"}
         
-    # 1. Update progress in DB based on evaluation
-    db = Database()
+    # 1. Accumulate current score into batch
+    batch_scores = list(state.get("current_batch_scores", []))
+    batch_scores.append(score)
     
-    # We fetch existing progress (if any)
-    progress = await db.get_topic_progress(user_id, topic_id)
-    
-    if not progress:
-        current_mastery = 0.0
-    else:
-        current_mastery = progress.get("mastery_score", 0.0)
+    # 2. Check if we have reached the batch size (5 questions)
+    if len(batch_scores) < 5:
+        # Not enough data to update mastery — continue asking questions
+        return {
+            "current_batch_scores": batch_scores,
+            "next_route": "assessor",
+            "error": ""
+        }
         
-    # EMA update
+    # 3. Batch complete: Calculate batch average
+    batch_avg = sum(batch_scores) / len(batch_scores)
+    
+    # 4. Update progress in DB based on EMA
+    db = Database()
+    progress = await db.get_topic_progress(user_id, topic_id)
+    current_mastery = progress.get("mastery_score", 0.0) if progress else 0.0
+        
+    # EMA update (alpha = 0.3)
     alpha = 0.3
-    new_mastery = (alpha * score) + ((1 - alpha) * current_mastery)
+    new_mastery = (alpha * batch_avg) + ((1 - alpha) * current_mastery)
     
     status = "in_progress"
     if new_mastery >= 0.85:
         status = "mastered"
         
     # Update DB
-    await db.upsert_topic_progress(user_id, topic_id, {
-        "mastery_score": new_mastery,
-        "status": status,
-        "last_assessed_at": "now()" # In a real app, pass ISO timestamp
-    })
+    try:
+        await db.upsert_topic_progress(user_id, topic_id, {
+            "mastery_score": new_mastery,
+            "status": status,
+            "last_assessed_at": "now()"
+        })
+    except Exception as e:
+        print(f"[PathRerouter] ⚠️ Failed to update DB: {e}")
     
-    # Decide routing flag
-    route = "assessor" # Default to another question
+    # 5. Decide routing flag based on new mastery
     if status == "mastered":
-        route = "planner" # Pick a new topic
-    elif score < 0.4:
-        route = "swarm" # User is failing badly, trigger swarm to teach
+        route = "planner"   # Pick a new topic
+    elif new_mastery < 0.4:
+        route = "swarm"     # User is failing badly, trigger swarm to teach
+    else:
+        route = "assessor"  # Need more practice (0.40 <= mastery < 0.85)
         
     return {
-        # We can store the routing decision in a transient state variable if needed,
-        # but LangGraph conditional edges usually just read the state.
-        # Let's add 'next_route' to the state to make it explicit.
+        # Clear the batch for the next round (or next topic)
+        "current_batch_scores": [],
         "next_route": route,
         "error": ""
     }

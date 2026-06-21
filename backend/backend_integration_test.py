@@ -42,7 +42,10 @@ import traceback
 from dotenv import load_dotenv
 
 # ── Load env ──────────────────────────────────────────────────────────────────
-load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"))
+# The .env lives in the project root (one level above backend/)
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_BACKEND_DIR  = os.path.dirname(os.path.abspath(__file__))
+load_dotenv(dotenv_path=os.path.join(_PROJECT_ROOT, ".env"), override=True)
 
 # ── Test configuration ────────────────────────────────────────────────────────
 # Replace this with a real user UUID from your Supabase auth.users table
@@ -96,6 +99,10 @@ async def test_01_environment():
             fail(f"ENV: {var}", "Not set!")
 
     # Test imports
+    # Ensure backend/ is on sys.path so `from app.Agent...` imports resolve
+    if _BACKEND_DIR not in sys.path:
+        sys.path.insert(0, _BACKEND_DIR)
+
     try:
         import langchain_groq
         ok("Import: langchain_groq")
@@ -118,7 +125,6 @@ async def test_01_environment():
 async def test_02_supabase_connection():
     section("02 — Supabase Connection")
     try:
-        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "app"))
         from app.Agent.Tools.Database import Database
         db = Database()
         ok("Supabase client created")

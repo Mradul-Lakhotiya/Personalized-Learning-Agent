@@ -23,7 +23,11 @@ class GraphService:
             # Stream node-by-node updates
             async for output in app_graph.astream(initial_state, config=config, stream_mode="updates"):
                 for node_name, state_update in output.items():
-                    err = state_update.get("error", "")
+                    print(f"DEBUG: node_name={node_name}, type(state_update)={type(state_update)}, state_update={state_update}")
+                    if isinstance(state_update, dict):
+                        err = state_update.get("error", "")
+                    else:
+                        err = ""
                     if err:
                         yield GraphService._format_sse("error", {"node": node_name, "message": err})
                     else:
