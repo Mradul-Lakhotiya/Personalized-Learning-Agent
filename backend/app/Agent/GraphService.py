@@ -148,3 +148,18 @@ class GraphService:
 
         # Resume from checkpoint
         return GraphService.run_and_stream(None, config)
+
+    @staticmethod
+    async def end_session(thread_id: str) -> None:
+        """
+        Fetches the final state and triggers background memory consolidation.
+        """
+        config = {"configurable": {"thread_id": thread_id}}
+        existing_state = app_graph.get_state(config)
+        if existing_state and existing_state.values:
+            from .Nodes.MemoryConsolidator import consolidate_session
+            # Fire and forget
+            asyncio.create_task(consolidate_session(existing_state.values))
+            
+            # Optionally mark session_complete in state
+            app_graph.update_state(config, {"session_complete": True})

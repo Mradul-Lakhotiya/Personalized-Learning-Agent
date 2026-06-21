@@ -37,3 +37,12 @@ async def submit_answer(request: SubmitAnswerRequest, user_id: str = Depends(get
         generator, 
         media_type="text/event-stream"
     )
+
+@router.post("/end")
+async def end_session(request: StartSessionRequest, user_id: str = Depends(get_current_user)):
+    """
+    Ends the current session and triggers background consolidation.
+    Returns immediately while consolidation happens in the background.
+    """
+    await GraphService.end_session(request.thread_id)
+    return {"status": "success", "message": "Session consolidation started in background"}
