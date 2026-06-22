@@ -2,8 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import os
-# Load environment variables from the parent directory
-load_dotenv(dotenv_path="../.env")
+# Load .env from the current working directory (backend/)
+load_dotenv()
 
 from app.routes import router as agent_router
 

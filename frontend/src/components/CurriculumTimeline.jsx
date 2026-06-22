@@ -1,5 +1,3 @@
-import React from 'react';
-
 export function CurriculumTimeline({ progressData = [], curriculaData = [] }) {
   if (!curriculaData || curriculaData.length === 0) {
     return (

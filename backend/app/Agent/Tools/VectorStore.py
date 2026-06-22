@@ -52,7 +52,7 @@ class VectorStore:
         vectors = [vec[:768] for vec in vectors]
         
         # 2. Prepare for Pinecone
-        # Using a hash of the text or a random UUID as the ID
+        # Generate a random UUID as the Pinecone vector ID
         import uuid
         records = []
         for vec, meta in zip(vectors, metadatas):

@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Send } from 'lucide-react';
 
-export function QuestionCard({ question, onSubmit, disabled }) {
+export function QuestionCard({ question, onSubmit, onSkip, disabled }) {
   const [answer, setAnswer] = useState('');
 
   if (!question) return null;
@@ -79,25 +79,50 @@ export function QuestionCard({ question, onSubmit, disabled }) {
           />
         )}
 
-        <button 
-          type="submit" 
-          disabled={disabled || !answer.trim()}
-          style={{
-            alignSelf: 'flex-end',
-            display: 'flex', alignItems: 'center', gap: '0.5rem',
-            padding: '0.75rem 1.5rem',
-            background: 'var(--accent-purple)',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            fontWeight: 600,
-            cursor: (disabled || !answer.trim()) ? 'not-allowed' : 'pointer',
-            opacity: (disabled || !answer.trim()) ? 0.5 : 1,
-            transition: 'opacity 0.2s'
-          }}
-        >
-          Submit <Send size={18} />
-        </button>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
+          {onSkip && (
+            <button 
+              type="button"
+              onClick={onSkip}
+              disabled={disabled}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '0.5rem',
+                padding: '0.75rem 1.5rem',
+                background: 'transparent',
+                color: 'var(--text-secondary)',
+                border: '1px solid var(--glass-border)',
+                borderRadius: '8px',
+                fontWeight: 600,
+                cursor: disabled ? 'not-allowed' : 'pointer',
+                opacity: disabled ? 0.5 : 1,
+                transition: 'opacity 0.2s, background 0.2s'
+              }}
+              onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+              onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+            >
+              Skip
+            </button>
+          )}
+
+          <button 
+            type="submit" 
+            disabled={disabled || !answer.trim()}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '0.5rem',
+              padding: '0.75rem 1.5rem',
+              background: 'var(--accent-purple)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontWeight: 600,
+              cursor: (disabled || !answer.trim()) ? 'not-allowed' : 'pointer',
+              opacity: (disabled || !answer.trim()) ? 0.5 : 1,
+              transition: 'opacity 0.2s'
+            }}
+          >
+            Submit <Send size={18} />
+          </button>
+        </div>
       </form>
     </div>
   );

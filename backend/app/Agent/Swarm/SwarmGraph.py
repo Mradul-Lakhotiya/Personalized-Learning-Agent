@@ -29,9 +29,10 @@ swarm_workflow.add_edge("query_generator", "academic_worker")
 swarm_workflow.add_edge("query_generator", "multimedia_worker")
 
 # ── Fan-In: all three workers complete → synthesizer ─────────────────────────
-# LangGraph automatically waits for ALL three workers before firing synthesizer
-# because of the `add` reducer on swarm_raw_results — it knows all branches
-# must return before the join point can proceed.
+# NOTE: LangGraph does NOT automatically parallelise these three workers or
+# wait for all of them before firing synthesizer. They run one after another
+# in the order the edges are evaluated. The `add` reducer on swarm_raw_results
+# accumulates results across the sequential runs; it does NOT create a join point.
 swarm_workflow.add_edge("practical_worker",  "synthesizer")
 swarm_workflow.add_edge("academic_worker",   "synthesizer")
 swarm_workflow.add_edge("multimedia_worker", "synthesizer")

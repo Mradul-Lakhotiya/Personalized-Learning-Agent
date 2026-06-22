@@ -1,102 +1,59 @@
 import asyncio
 import re
 from ...LearnerState import LearnerState
-from ...Tools.VectorStore import VectorStore
-
-# ── Text Chunker ──────────────────────────────────────────────────────────────
-def chunk_text(text: str, chunk_size: int = 512, overlap: int = 64) -> list[str]:
-    """
-    Splits text into overlapping word-level chunks.
-    chunk_size and overlap are in approximate words (not tokens),
-    which is close enough for educational content without needing a tokenizer.
-    """
-    words = text.split()
-    chunks = []
-    start = 0
-    while start < len(words):
-        end = start + chunk_size
-        chunk = " ".join(words[start:end])
-        chunks.append(chunk)
-        start += chunk_size - overlap   # slide forward with overlap
-    return [c for c in chunks if len(c.strip()) > 20]  # drop near-empty chunks
+from ...Tools.RAGService import RAGService
 
 
 def _slugify(text: str) -> str:
-    """Convert topic name to a safe vector ID prefix."""
-    return re.sub(r"[^a-z0-9_]", "_", text.lower().strip())[:48]
+    return re.sub(r"[^a-z0-9-]", "", text.lower().replace(" ", "-"))
 
 
 async def vector_ingestion_gate_node(state: LearnerState) -> dict:
     """
-    Sub-Node 3.4 — VectorIngestionGate
-    Runs after ContentSynthesizer. Takes the compiled markdown lesson and:
-    1. Chunks it into overlapping word-level segments.
-    2. Embeds each chunk using text-embedding-004 (via EmbeddingFactory).
-    3. Upserts all chunks to Pinecone 'content' namespace with rich metadata.
-    4. Resets swarm state fields so stale data doesn't bleed into the next topic.
+    VectorIngestionGate — runs after Synthesizer.
 
-    NO LLM call — fully programmatic.
+    Reads node_resources_output from Synthesizer (summary + resource list)
+    and persists it to:
+      - Pinecone `node_content` namespace (shared cross-user vector cache)
+      - Supabase `path_nodes` row for this user's thread (user-specific cache)
+        via RAGService.save_node_resources(thread_id=session_id)
+
+    Resets swarm state fields so the graph is clean for the next node request.
+    No LLM call — fully programmatic.
     """
     topic = state.get("current_topic", "unknown")
-    topic_id = state.get("current_topic_id", "")
-    lesson = state.get("content_module", "")
-    raw_results = state.get("swarm_raw_results", [])
+    thread_id = state.get("session_id", "")          # passed into swarm_input by routes.py
+    resources_output = state.get("node_resources_output") or {}
+    summary = resources_output.get("summary", state.get("content_module", ""))
+    resources = resources_output.get("resources", [])
+    questions = resources_output.get("questions", [])
 
-    if not lesson:
-        # Nothing to ingest — clear fields and continue
-        print("[VectorIngestionGate] No lesson content to ingest. Skipping.")
+    if not summary and not resources:
+        print("[VectorIngestionGate] No output from Synthesizer — skipping persistence.")
         return {
             "swarm_queries": [],
             "swarm_raw_results": [],
+            "node_resources_output": {},
         }
 
-    # Collect all source URLs from the swarm workers
-    source_urls = list({
-        r.get("source_url", "") for r in raw_results if r.get("source_url")
-    })
+    node_slug = _slugify(topic)
 
     try:
-        vs = VectorStore()
-
-        # 1. Chunk the lesson
-        chunks = chunk_text(lesson, chunk_size=512, overlap=64)
-        print(f"[VectorIngestionGate] Ingesting {len(chunks)} chunks for topic: '{topic}'")
-
-        if not chunks:
-            print("[VectorIngestionGate] No chunks generated from lesson. Skipping upsert.")
-            return {"swarm_queries": [], "swarm_raw_results": []}
-
-        topic_slug = _slugify(topic)
-
-        # 2. Build metadata for each chunk
-        metadatas = [
-            {
-                "topic": topic,
-                "topic_id": topic_id,
-                "chunk_index": i,
-                "source_urls": source_urls[:5],   # cap to avoid metadata size limits
-                "total_chunks": len(chunks),
-            }
-            for i in range(len(chunks))
-        ]
-
-        # 3. Embed + upsert to Pinecone 'content' namespace
-        await vs.aupsert(
-            texts=chunks,
-            metadatas=metadatas,
-            namespace="content"
+        await RAGService.save_node_resources(
+            node_slug=node_slug,
+            title=topic,
+            description=summary,
+            resources=resources,
+            questions=questions,
+            thread_id=thread_id or None,    # None triggers the Pinecone-only path
         )
-
-        print(f"[VectorIngestionGate] ✅ Successfully ingested {len(chunks)} chunks into Pinecone 'content' namespace.")
-
+        print(f"[VectorIngestionGate] Persisted resources for node '{node_slug}' "
+              f"({len(resources)} resources, {len(questions)} questions).")
     except Exception as e:
-        # Non-fatal — if Pinecone ingestion fails, the lesson was still delivered
-        print(f"[VectorIngestionGate] ⚠️ Ingestion failed (non-fatal): {str(e)}")
+        print(f"[VectorIngestionGate] WARNING: save failed (non-fatal): {e}")
 
-    # 4. Always reset swarm state fields regardless of ingestion success
     return {
         "swarm_queries": [],
         "swarm_raw_results": [],
-        # NOTE: We do NOT clear content_module here so the parent graph can still
-        # read the lesson and append it to conversation_history if needed.
+        "content_module": summary,   # keep summary accessible in state
     }

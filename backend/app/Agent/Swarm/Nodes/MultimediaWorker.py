@@ -49,7 +49,26 @@ async def multimedia_worker_node(state: LearnerState) -> Dict[str, Any]:
             transcript_list = ytt_api.list(video_id)
             
             # Find the english transcript and fetch it
-            transcript_data = transcript_list.find_transcript(['en', 'en-US', 'en-GB']).fetch()
+            try:
+                transcript_data = transcript_list.find_transcript(['en', 'en-US', 'en-GB', 'en-IN', 'en-CA', 'en-AU']).fetch()
+            except Exception:
+                # Fallback to the first translatable transcript or just the first available
+                try:
+                    transcript_data = None
+                    for t in transcript_list:
+                        if t.is_translatable:
+                            transcript_data = t.translate('en').fetch()
+                            break
+                    if not transcript_data:
+                        for t in transcript_list:
+                            transcript_data = t.fetch()
+                            break
+                    if not transcript_data:
+                        print("MultimediaWorker failed: No transcript data could be fetched.")
+                        return None
+                except Exception as e2:
+                    print(f"MultimediaWorker failed during transcript fallback: {e2}")
+                    return None
             
             # Concatenate first 50 lines to keep it manageable
             # Handle both dict and object return types from youtube_transcript_api
@@ -78,9 +97,7 @@ async def multimedia_worker_node(state: LearnerState) -> Dict[str, Any]:
                 title=yt_data['title'],
                 metadata={"video_id": yt_data['video_id']}
             ))
-            
     except Exception as e:
-        print(f"MultimediaWorker failed: {e}") 
-        pass 
-        
+        print(f"[MultimediaWorker] failed: {e}")
+
     return {"swarm_raw_results": results}

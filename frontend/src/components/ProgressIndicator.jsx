@@ -1,11 +1,7 @@
-import React from 'react';
-import { Loader2, Activity, Database, Brain, Network, CheckCircle, FileSearch, HelpCircle } from 'lucide-react';
+import { Loader2, Activity, Brain, Network, CheckCircle, FileSearch, HelpCircle } from 'lucide-react';
 
 const getNodeMetadata = (nodeName) => {
   switch (nodeName) {
-    case 'Initializing...': return { text: 'Waking up agent...', icon: Activity, color: 'text-cyan-400' };
-    case 'profile_builder': return { text: 'Analyzing Learning Profile', icon: Database, color: 'text-blue-400' };
-    case 'curriculum_planner': return { text: 'Planning Curriculum', icon: Brain, color: 'text-purple-400' };
     case 'knowledge_assessor': return { text: 'Generating Assessment', icon: HelpCircle, color: 'text-yellow-400' };
     case 'content_delivery': return { text: 'Swarm Orchestration (Fetching Modules)', icon: Network, color: 'text-green-400' };
     case 'practical_worker': return { text: 'Scraping Practical Web Resources', icon: FileSearch, color: 'text-cyan-300' };
@@ -30,7 +26,7 @@ export function ProgressIndicator({ isRunning, currentNode }) {
       {isRunning ? (
         <Loader2 className={`animate-spin ${metadata.color}`} size={24} style={{ animation: 'spin 2s linear infinite' }} />
       ) : (
-        <CheckCircle className="text-green-500" size={24} />
+        <Icon className={metadata.color} size={24} />
       )}
       <div>
         <div style={{ fontSize: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)' }}>

@@ -40,7 +40,6 @@ async def academic_worker_node(state: LearnerState) -> Dict[str, Any]:
             ))
             
     except Exception as e:
-        print(f"AcademicWorker failed: {e}") 
-        pass 
+        print(f"[AcademicWorker] failed: {e}")
         
     return {"swarm_raw_results": results}

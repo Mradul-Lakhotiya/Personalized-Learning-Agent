@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
 
@@ -51,7 +51,7 @@ const STEPS = [
 ];
 
 export default function OnboardingFlow({ onComplete }) {
-  const { user, session } = useAuth();
+  const { user } = useAuth();
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState({
     learning_goal: '',
