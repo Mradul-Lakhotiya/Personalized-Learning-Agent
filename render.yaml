@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: go-backend
+    env: go
+    rootDir: go-backend
+    buildCommand: go build -o main
+    startCommand: ./main
+    plan: free
+
+  - type: web
+    name: python-backend
+    env: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    plan: free
