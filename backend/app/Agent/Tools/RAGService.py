@@ -42,7 +42,7 @@ class RAGService:
             "resources": [{ "type", "title", "url", "why_relevant" }],
             "source": "db_cache" | "pinecone_cache"
         }
-        """
+        """ 
         # 1. Supabase DB lookup (exact slug match — fastest)
         try:
             db = Database()
@@ -62,13 +62,15 @@ class RAGService:
             vs = VectorStore()
             query = f"{node_title} {node_description}".strip()
             matches = await vs.asearch(query, namespace="node_content", top_k=1)
+            
+            if matches:
+                print(f"[RAGService] Pinecone top match score: {matches[0].get('score', 0)}")
 
-            if matches and matches[0].get("score", 0) > 0.88:
+            if matches and matches[0].get("score", 0) > 0.70:
                 meta = matches[0].get("metadata", {})
-                if meta.get("node_slug") == node_slug:
-                    resources_json = meta.get("resources_json", "[]")
-                    resources = json.loads(resources_json) if isinstance(resources_json, str) else resources_json
-                    if resources:
+                resources_json = meta.get("resources_json", "[]")
+                resources = json.loads(resources_json) if isinstance(resources_json, str) else resources_json
+                if resources:
                         print(f"[RAGService] Pinecone cache HIT for slug: '{node_slug}' "
                               f"(score={matches[0]['score']:.3f})")
                         return {
@@ -105,9 +107,10 @@ class RAGService:
         # 1. Embed and upsert to Pinecone
         try:
             vs = VectorStore()
-            text = f"{title}\n{description}\n" + "\n".join(
-                r.get("title", "") for r in resources
-            ) + "\n" + "\n".join(q.get("text", "") for q in questions)
+            # Embed ONLY the title and description (the query) so that future queries 
+            # for similar topics will match this vector. The resources and questions 
+            # are safely stored in the metadata payload.
+            text = f"{title} {description}".strip()
             
             metadata = {
                 "node_slug":      node_slug,
@@ -153,7 +156,7 @@ class RAGService:
             vs = VectorStore()
             matches = await vs.asearch(learning_goal, namespace="curriculum_cache", top_k=1)
 
-            if matches and matches[0].get("score", 0) > 0.92:
+            if matches and matches[0].get("score", 0) > 0.70:
                 meta = matches[0].get("metadata", {})
                 graph_json = meta.get("curriculum_graph_json")
                 if graph_json:
