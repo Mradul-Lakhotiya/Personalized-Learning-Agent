@@ -1,0 +1,19 @@
+{
+  "status": "commited",
+  "type": "frontend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:5173",
+  "loginUser": "test@gmail.com",
+  "loginPassword": "123456789",
+  "executionArgs": {
+    "projectName": "frontend",
+    "projectPath": "d:\\Programming\\Intern\\Rival\\PersonalizeLearning\\frontend",
+    "testIds": [],
+    "additionalInstruction": "Sign up a new user with a random email and password to access the authenticated routes.",
+    "serverMode": "production",
+    "envs": {
+      "API_KEY": "sk-user-1FMFbxZ6x30dy37P3jShoY3V3Z2WUiw8SA00MFiO5FRrl7D1Nf_JFwpNEjzQNWWYBbj7KVgf03FN_M2Yh69P1HfsckmhXQsb5DL2phUoDEJXu4lscD2C7XCdJm0fSV8Icgc"
+    }
+  },
+  "serverPort": 50981
+}

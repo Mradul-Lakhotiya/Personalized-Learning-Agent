@@ -1,21 +1,18 @@
 import { useState, useEffect } from 'react';
 import './App.css';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
-
 import { useAuth } from './context/AuthContext';
-import { supabase } from './supabaseClient';
-import Auth from './components/Auth';
-import OnboardingFlow from './components/OnboardingFlow';
-import { Sidebar } from './components/Sidebar';
-import { GraphCanvas } from './components/GraphCanvas';
-import { NodeDetailPanel } from './components/NodeDetailPanel';
+import Auth from './components/auth/Auth';
+import { Sidebar } from './components/layout/Sidebar';
+import { GraphCanvas } from './components/graph/GraphCanvas';
+import { NodeDetailPanel } from './components/node/NodeDetailPanel';
 import { useLearningPath } from './hooks/useLearningPath';
+import { fetchConversations } from './services/pathApi';
+import { PHASE } from './constants/phases';
 import { Loader2 } from 'lucide-react';
 
 function App() {
   const { user, session, signOut } = useAuth();
-  const [isOnboarded, setIsOnboarded] = useState(null);
   
   // Local path history
   const [paths, setPaths] = useState([]);
@@ -28,29 +25,13 @@ function App() {
     startNewPath, submitSurveyAnswer, updateGraph, loadCurriculum,
   } = useLearningPath(session?.access_token, user?.id);
 
-  // Check onboarding status and load paths
+  // Load paths
   useEffect(() => {
-    if (!user) return;
-    (async () => {
-      const { data } = await supabase
-        .from('user_profiles')
-        .select('learning_goals, background, learning_style')
-        .eq('id', user.id)
-        .single();
-      setIsOnboarded(!!(data && data.background && data.learning_goals?.length > 0));
-
-      // Fetch paths from Node backend
-      try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/users/${user.id}/conversations`);
-        if (res.ok) {
-          const json = await res.json();
-          setPaths(json.paths || []);
-        }
-      } catch (e) {
-        console.error("Failed to fetch paths:", e);
-      }
-    })();
-  }, [user]);
+    if (!user || !session?.access_token) return;
+    fetchConversations(user.id, session.access_token)
+      .then((json) => setPaths(json.paths || []))
+      .catch((e) => console.error('Failed to fetch paths:', e));
+  }, [user, session]);
 
   // Load selected path from history
   useEffect(() => {
@@ -61,17 +42,15 @@ function App() {
 
   // Refresh paths when a new graph is ready
   useEffect(() => {
-    if (phase === 'graph_ready' && threadId && curriculumGraph && user) {
-      // Re-fetch paths from Node backend
-      fetch(`${API_BASE_URL}/api/v1/users/${user.id}/conversations`)
-        .then(res => res.json())
-        .then(json => {
-            setPaths(json.paths || []);
-            setActivePath(threadId);
+    if (phase === PHASE.GRAPH_READY && threadId && curriculumGraph && user && session?.access_token) {
+      fetchConversations(user.id, session.access_token)
+        .then((json) => {
+          setPaths(json.paths || []);
+          setActivePath(threadId);
         })
-        .catch(e => console.error("Failed to refresh paths:", e));
+        .catch((e) => console.error('Failed to refresh paths:', e));
     }
-  }, [phase, threadId, curriculumGraph, user]);
+  }, [phase, threadId, curriculumGraph, user, session]);
 
   const handleNewPath = () => {
     setActivePath(null);
@@ -88,18 +67,8 @@ function App() {
     updateGraph(newGraph);
   };
 
-  // Auth / Onboarding gates
+  // Auth gate
   if (!user) return <Auth />;
-  if (isOnboarded === null) {
-    return (
-      <div className="h-screen w-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-8 h-8 text-primary animate-spin" />
-      </div>
-    );
-  }
-  if (!isOnboarded) {
-    return <OnboardingFlow onComplete={() => setIsOnboarded(true)} />;
-  }
 
   return (
     <div className="bg-background text-on-background font-body-md h-screen overflow-hidden flex">
@@ -147,9 +116,9 @@ function App() {
               </div>
               
               {/* Temporary placeholder for Survey UI until ChatPanel is built */}
-              {(phase === 'survey' || phase === 'starting') && (
+              {(phase === PHASE.SURVEY || phase === PHASE.STARTING) && (
                 <div className="bg-primary-fixed text-on-primary-fixed p-4 rounded-xl">
-                  {phase === 'starting' && !surveyQuestion ? (
+                  {phase === PHASE.STARTING && !surveyQuestion ? (
                     <div className="flex items-center gap-2">
                       <Loader2 className="w-4 h-4 animate-spin" />
                       <span>Analyzing your goal...</span>
@@ -187,7 +156,7 @@ function App() {
 
           {/* 3. Right Panel (Graph Canvas) */}
           <div className="flex-1 relative overflow-hidden bg-background">
-            {phase === 'generating' && (
+            {phase === PHASE.GENERATING && (
               <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
                 <div className="flex flex-col items-center gap-4">
                   <Loader2 className="w-12 h-12 text-primary animate-spin" />
@@ -196,9 +165,9 @@ function App() {
               </div>
             )}
             
-            {(phase === 'graph_ready' || phase === 'idle') && (
+            {(phase === PHASE.GRAPH_READY || phase === PHASE.IDLE) && (
               <GraphCanvas
-                curriculumGraph={phase === 'graph_ready' ? curriculumGraph : null}
+                curriculumGraph={phase === PHASE.GRAPH_READY ? curriculumGraph : null}
                 onNodeClick={handleNodeClick}
               />
             )}

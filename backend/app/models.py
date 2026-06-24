@@ -15,3 +15,13 @@ class SurveyAnswerRequest(BaseModel):
 
 class GenerateCurriculumRequest(BaseModel):
     thread_id: str = Field(..., description="Thread ID. Survey must be complete.")
+
+
+class GenerateNodeRequest(BaseModel):
+    """Request body for POST /agent/generate-node (content swarm)."""
+    node_id:       str = Field(..., description="URL-safe slug of the node (e.g. 'python-basics').")
+    thread_id:     str = Field(..., description="LangGraph thread ID of the active session.")
+    title:         str = Field(..., description="Human-readable node title.")
+    description:   str = Field("",  description="1–2 sentence node description.")
+    learning_goal: str = Field("",  description="The user's overall learning goal (context for swarm).")
+

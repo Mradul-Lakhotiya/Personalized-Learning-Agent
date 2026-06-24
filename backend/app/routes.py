@@ -7,13 +7,17 @@ SSE endpoints stream events using text/event-stream.
 
 from fastapi import APIRouter, Depends, BackgroundTasks
 from fastapi.responses import StreamingResponse
+
 from .models import (
     StartSessionRequest,
     SurveyAnswerRequest,
     GenerateCurriculumRequest,
+    GenerateNodeRequest,
 )
 from .Agent.GraphService import GraphService
 from .Agent.Tools.RAGService import RAGService
+from .Agent.Tools.Database import Database
+from .Agent.Swarm.SwarmGraph import swarm_graph
 from .api.auth import get_current_user
 
 router = APIRouter(prefix="/api/v1", tags=["PathMind"])
@@ -84,22 +88,9 @@ async def generate_curriculum(
     return StreamingResponse(generator, media_type="text/event-stream")
 
 
-# ── Curriculum Graph ──────────────────────────────────────────────────────────
-
-# Removed deprecated endpoints (complete_node, get_user_paths, get_curriculum) — now
-# handled by the Go backend (port 4000) which owns all CRUD / state operations.
-
-# ── Node Interactions ─────────────────────────────────────────────────────────
-
-from pydantic import BaseModel
-
-
-class GenerateNodeRequest(BaseModel):
-    node_id: str
-    thread_id: str
-    title: str
-    description: str = ""
-    learning_goal: str = ""
+# ── Node Content Generation ───────────────────────────────────────────────────
+# Note: CRUD operations (complete_node, get_user_paths, get_curriculum) are
+# handled by the Go backend (port 4000) which owns all state/CRUD operations.
 
 @router.post("/agent/generate-node")
 async def generate_node_content(
@@ -108,9 +99,10 @@ async def generate_node_content(
 ):
     """
     Trigger content swarm for a node.
+    Cache-first: checks Supabase → Pinecone before running the swarm.
     Returns an SSE stream that yields {"type": "ready"} when done.
     """
-    # 1. Check Pinecone / Supabase cache first to avoid re-running the swarm
+    # 1. Check cache (Pinecone / Supabase) to avoid re-running the swarm
     cached = await RAGService.get_node_resources(
         node_slug        = req.node_id,
         node_title       = req.title,
@@ -119,60 +111,55 @@ async def generate_node_content(
 
     if cached:
         # Cache hit — save directly to the user's path_nodes row and stream 'ready'
-        from .Agent.Tools.Database import Database
         db = Database()
         await db.cache_node_content_by_thread(
-            thread_id=req.thread_id,
-            node_id=req.node_id,
-            resources=cached.get("resources", []),
-            questions=cached.get("questions", []),
+            thread_id = req.thread_id,
+            node_id   = req.node_id,
+            resources = cached.get("resources", []),
+            questions = cached.get("questions", []),
         )
+
         async def _cached():
             yield GraphService._sse("ready", {"source": "pinecone_cache"})
+
         return StreamingResponse(_cached(), media_type="text/event-stream")
 
     # 2. Cache miss — run the content swarm and stream progress via SSE
-    from .Agent.Swarm.SwarmGraph import swarm_graph
-    import asyncio
-
     async def _stream_swarm():
         yield GraphService._sse("status", {"message": "Gathering resources"})
 
         # Use a unique config per node so swarms don't collide across concurrent requests
         config = {"configurable": {"thread_id": f"swarm-{req.node_id}"}}
         swarm_input = {
-            "current_topic":       req.title,
-            "swarm_queries":       [],
-            "swarm_raw_results":   [],
+            "current_topic":         req.title,
+            "swarm_queries":         [],
+            "swarm_raw_results":     [],
             "node_resources_output": {},
-            "content_module":      "",
-            "user_id":             user_id,
-            "session_id":          req.thread_id,
-            "learning_goal":       req.learning_goal,
+            "content_module":        "",
+            "user_id":               user_id,
+            "session_id":            req.thread_id,
+            "learning_goal":         req.learning_goal,
         }
-        
+
         try:
             final_state = await swarm_graph.ainvoke(swarm_input)
-            
+
             resources_output = final_state.get("node_resources_output") or {}
             resources = resources_output.get("resources", [])
             questions = resources_output.get("questions", [])
 
             if resources or questions:
-                from .Agent.Tools.Database import Database
                 db = Database()
                 await db.cache_node_content_by_thread(
-                    thread_id=req.thread_id,
-                    node_id=req.node_id,
-                    resources=resources,
-                    questions=questions,
+                    thread_id = req.thread_id,
+                    node_id   = req.node_id,
+                    resources = resources,
+                    questions = questions,
                 )
 
             yield GraphService._sse("ready", {"source": "swarm"})
+
         except Exception as e:
             yield GraphService._sse("error", {"message": f"Swarm failed: {e}"})
 
     return StreamingResponse(_stream_swarm(), media_type="text/event-stream")
-
-
-

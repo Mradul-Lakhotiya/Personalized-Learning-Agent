@@ -1,0 +1,104 @@
+version: "2"
+type: frontend
+tech_stack:
+  - React
+  - Vite
+  - TailwindCSS
+  - ReactFlow
+  - Supabase
+  - Lucide React
+routes:
+  - path: /
+    file: src/App.jsx
+    auth_required: false
+    description: Main application page handling auth gate and dashboard conditionally.
+features:
+  - name: User Authentication
+    description: Login and Registration using Supabase Auth
+    files:
+      - src/components/Auth.jsx
+      - src/context/AuthContext.jsx
+    entry_route: /
+    user_interactions:
+      - Enter email and password
+      - Click Sign Up or Sign In button
+      - Toggle between Sign In and Sign Up views
+    api_calls:
+      - method: POST
+        endpoint: Supabase Auth (signInWithPassword / signUp)
+    auth_required: false
+
+  - name: Sidebar and Path History
+    description: View and select existing learning paths, or initiate creating a new path.
+    files:
+      - src/components/Sidebar.jsx
+      - src/components/NewPathModal.jsx
+    entry_route: /
+    user_interactions:
+      - View list of paths
+      - Click a path to select it
+      - Click "New Path" to open modal
+      - Enter learning goal in modal and submit
+    api_calls:
+      - method: GET
+        endpoint: /api/v1/users/{userId}/conversations
+    auth_required: true
+
+  - name: Path Graph Canvas
+    description: Interactive visualization of the learning curriculum topics and prerequisites using ReactFlow.
+    files:
+      - src/components/GraphCanvas.jsx
+      - src/components/CustomNode.jsx
+    entry_route: /
+    user_interactions:
+      - View nodes and edges
+      - Click a node to view details
+      - Pan and zoom canvas
+    api_calls:
+      - method: GET
+        endpoint: /api/v1/users/{userId}/conversations/{threadId}
+    auth_required: true
+
+  - name: Node Resource Generation and Viewing
+    description: View resources for a selected topic, or generate them if not yet available.
+    files:
+      - src/components/NodeDetailPanel.jsx
+    entry_route: /
+    user_interactions:
+      - Click "Generate Resources" if node is pending
+      - View list of resources and questions
+      - Click external resource links
+    api_calls:
+      - method: GET
+        endpoint: /api/v1/users/{userId}/conversations/{threadId}/nodes/{nodeId}
+      - method: GET
+        endpoint: /api/v1/users/{userId}/conversations/{threadId}/nodes/{nodeId}/generate
+    auth_required: true
+
+  - name: Question Answering
+    description: Answer evaluation questions associated with a learning node.
+    files:
+      - src/components/QuestionCard.jsx
+    entry_route: /
+    user_interactions:
+      - Enter answer in text area
+      - Click Submit Answer
+      - View evaluation feedback (Pass/Fail)
+    api_calls:
+      - method: POST
+        endpoint: /api/v1/agent/evaluate-answer
+    auth_required: true
+
+  - name: Mark Node Complete
+    description: Mark a learning node as complete to unlock subsequent dependent nodes.
+    files:
+      - src/components/NodeDetailPanel.jsx
+    entry_route: /
+    user_interactions:
+      - Click "Mark as Complete" button
+    api_calls:
+      - method: POST
+        endpoint: /api/v1/users/{userId}/conversations/{threadId}/nodes/{nodeId}/complete
+    auth_required: true
+
+known_limitations: []

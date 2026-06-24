@@ -35,4 +35,4 @@ Thumbs.db
 .idea/
 *.swp
 
-./scratch/*
+scratch/

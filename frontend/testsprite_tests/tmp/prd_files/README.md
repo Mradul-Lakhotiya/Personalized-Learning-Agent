@@ -4,11 +4,6 @@ An AI-powered, highly personalized learning platform that dynamically generates,
 
 ## 🏗️ Architecture Overview
 
-For in-depth design documentation, product requirements, and technical documentation, please refer to the [docs directory](docs/):
-- [Architecture](docs/architecture.md)
-- [PRD](docs/PRD.md)
-- [Tech Docs](docs/tech_docs.md)
-
 The system is built on a distributed microservice architecture:
 
 ### 1. Frontend (React + Vite)

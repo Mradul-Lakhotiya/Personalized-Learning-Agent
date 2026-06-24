@@ -1,28 +1,21 @@
 import { useState, useCallback, useRef } from 'react';
-
-const AI_API = `${import.meta.env.VITE_AI_API_BASE_URL || 'http://localhost:8000'}/api/v1`;
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
+import { startSession, submitSurveyAnswer as apiSubmitAnswer, generateCurriculum as apiGenerateCurriculum } from '../services/aiApi';
+import { fetchCurriculum } from '../services/pathApi';
+import { PHASE } from '../constants/phases';
 
 export function useLearningPath(sessionToken, userId) {
-  const NODE_API = `${API_BASE_URL}/api/v1/users/${userId}/conversations`;
-  const [phase, setPhase] = useState('idle');           // idle | starting | survey | generating | graph_ready | error
+  const [phase, setPhase]                   = useState(PHASE.IDLE);
   const [surveyQuestion, setSurveyQuestion] = useState(null);
   const [surveyProgress, setSurveyProgress] = useState(null);
   const [curriculumGraph, setCurriculumGraph] = useState(null);
-  const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [threadId, setThreadId] = useState(null);
+  const [error, setError]                   = useState(null);
+  const [loading, setLoading]               = useState(false);
+  const [threadId, setThreadId]             = useState(null);
   const threadIdRef = useRef(null);
-
-  // getHeaders reads sessionToken at call-time — fresh token on every fetch
-  const getHeaders = useCallback(() => ({
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${sessionToken}`,
-  }), [sessionToken]);
 
   // ── SSE stream reader helper ──────────────────────────────────────────────
   const readSSEStream = async (response, onPayload) => {
-    const reader = response.body.getReader();
+    const reader  = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
 
@@ -39,9 +32,7 @@ export function useLearningPath(sessionToken, userId) {
           try {
             const data = JSON.parse(msg.replace('data: ', '').trim());
             onPayload(data);
-          } catch {
-            // ignore parse errors
-          }
+          } catch { /* ignore parse errors */ }
         }
       }
     } finally {
@@ -49,46 +40,41 @@ export function useLearningPath(sessionToken, userId) {
     }
   };
 
-  // ── Start a new session (sends learning goal) ─────────────────────────────
+  // ── Start a new session ───────────────────────────────────────────────────
   const startNewPath = useCallback(async (learningGoal) => {
     setLoading(true);
     setError(null);
-    setPhase('starting');
+    setPhase(PHASE.STARTING);
 
     const newThreadId = `thread-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     threadIdRef.current = newThreadId;
     setThreadId(newThreadId);
 
     try {
-      const response = await fetch(`${AI_API}/agent/start`, {
-        method: 'POST',
-        headers: getHeaders(),
-        body: JSON.stringify({ thread_id: threadIdRef.current, initial_prompt: learningGoal }),
-      });
-
+      const response = await startSession(newThreadId, learningGoal, sessionToken);
       await readSSEStream(response, (data) => {
         if (data.type === 'execution_complete') {
           const p = data.payload;
           if (p?.phase === 'onboarding' && p?.survey_question) {
             setSurveyQuestion(p.survey_question);
             setSurveyProgress(p.survey_progress);
-            setPhase('survey');
+            setPhase(PHASE.SURVEY);
           } else if (p?.phase === 'graph_ready' && p?.curriculum_graph) {
             setCurriculumGraph(p.curriculum_graph);
-            setPhase('graph_ready');
+            setPhase(PHASE.GRAPH_READY);
           }
         } else if (data.type === 'fatal_error') {
           setError(data.message);
-          setPhase('error');
+          setPhase(PHASE.ERROR);
         }
       });
     } catch (e) {
       setError(e.message);
-      setPhase('error');
+      setPhase(PHASE.ERROR);
     } finally {
       setLoading(false);
     }
-  }, [getHeaders]);
+  }, [sessionToken]);
 
   // ── Generate curriculum after survey ─────────────────────────────────────
   const generateCurriculum = useCallback(async () => {
@@ -97,31 +83,26 @@ export function useLearningPath(sessionToken, userId) {
     setError(null);
 
     try {
-      const response = await fetch(`${AI_API}/agent/generate-curriculum`, {
-        method: 'POST',
-        headers: getHeaders(),
-        body: JSON.stringify({ thread_id: threadIdRef.current }),
-      });
-
+      const response = await apiGenerateCurriculum(threadIdRef.current, sessionToken);
       await readSSEStream(response, (data) => {
         if (data.type === 'execution_complete') {
           const p = data.payload;
           if (p?.phase === 'graph_ready' && p?.curriculum_graph) {
             setCurriculumGraph(p.curriculum_graph);
-            setPhase('graph_ready');
+            setPhase(PHASE.GRAPH_READY);
           }
         } else if (data.type === 'fatal_error') {
           setError(data.message);
-          setPhase('error');
+          setPhase(PHASE.ERROR);
         }
       });
     } catch (e) {
       setError(e.message);
-      setPhase('error');
+      setPhase(PHASE.ERROR);
     } finally {
       setLoading(false);
     }
-  }, [getHeaders]);
+  }, [sessionToken]);
 
   // ── Submit one survey answer ──────────────────────────────────────────────
   const submitSurveyAnswer = useCallback(async (topic, rating) => {
@@ -130,16 +111,10 @@ export function useLearningPath(sessionToken, userId) {
     setError(null);
 
     try {
-      const res = await fetch(`${AI_API}/agent/survey-answer`, {
-        method: 'POST',
-        headers: getHeaders(),
-        body: JSON.stringify({ thread_id: threadIdRef.current, topic, rating }),
-      });
-      const data = await res.json();
+      const data = await apiSubmitAnswer(threadIdRef.current, topic, rating, sessionToken);
 
       if (data.survey_complete) {
-        // All answers collected — trigger graph generation
-        setPhase('generating');
+        setPhase(PHASE.GENERATING);
         setSurveyQuestion(null);
         await generateCurriculum();
       } else if (data.next_question) {
@@ -151,7 +126,7 @@ export function useLearningPath(sessionToken, userId) {
     } finally {
       setLoading(false);
     }
-  }, [getHeaders, generateCurriculum]);
+  }, [sessionToken, generateCurriculum]);
 
   // ── Load curriculum for existing session ─────────────────────────────────
   const loadCurriculum = useCallback(async (existingThreadId) => {
@@ -161,27 +136,22 @@ export function useLearningPath(sessionToken, userId) {
     setThreadId(existingThreadId);
 
     try {
-      if (!userId) {
-          throw new Error("User ID is required to load curriculum");
-      }
-      const response = await fetch(`${NODE_API}/${existingThreadId}`, {
-        headers: getHeaders(),
-      });
-      const data = await response.json();
-      if (data && data.curriculum_graph) {
+      if (!userId) throw new Error('User ID is required to load curriculum');
+      const data = await fetchCurriculum(userId, existingThreadId, sessionToken);
+      if (data?.curriculum_graph) {
         setCurriculumGraph(data.curriculum_graph);
-        setPhase('graph_ready');
+        setPhase(PHASE.GRAPH_READY);
       } else {
         setError('Failed to load curriculum');
-        setPhase('error');
+        setPhase(PHASE.ERROR);
       }
     } catch (e) {
       setError(e.message);
-      setPhase('error');
+      setPhase(PHASE.ERROR);
     } finally {
       setLoading(false);
     }
-  }, [getHeaders, NODE_API, userId]);
+  }, [userId]);
 
   // ── Update graph after node completion ───────────────────────────────────
   const updateGraph = useCallback((newGraph) => {

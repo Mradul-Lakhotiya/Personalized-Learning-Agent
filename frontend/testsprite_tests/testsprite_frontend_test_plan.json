@@ -1,0 +1,716 @@
+[
+  {
+    "id": "TC001",
+    "title": "Complete a topic and unlock downstream topics",
+    "description": "An authenticated learner can mark a topic complete and see locked downstream topics become available in the curriculum graph.",
+    "category": "Path Graph Canvas",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Enter {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Enter {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the authentication form"
+      },
+      {
+        "type": "action",
+        "description": "Select an existing learning path from the sidebar"
+      },
+      {
+        "type": "action",
+        "description": "Select a locked or available prerequisite topic node in the curriculum graph"
+      },
+      {
+        "type": "action",
+        "description": "Mark the topic as complete"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify downstream topics become unlocked in the curriculum graph"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC002",
+    "title": "Access the main learning interface after signing in",
+    "description": "An authenticated learner can sign in from the landing page and reach the main learning interface.",
+    "category": "User Authentication",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Enter {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Enter {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the authentication form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the main learning interface is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC003",
+    "title": "Open a topic node to see its details",
+    "description": "An authenticated learner can select a topic node in the curriculum graph and view the node's details panel.",
+    "category": "Path Graph Canvas",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Enter {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Enter {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the authentication form"
+      },
+      {
+        "type": "action",
+        "description": "Select an existing learning path from the sidebar"
+      },
+      {
+        "type": "action",
+        "description": "Select a topic node in the curriculum graph"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the selected node details are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC004",
+    "title": "Select an existing learning path from the sidebar",
+    "description": "An authenticated learner can choose a prior learning path from the sidebar and see that path's curriculum content load.",
+    "category": "Sidebar and Path History",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Enter {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Enter {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the authentication form"
+      },
+      {
+        "type": "action",
+        "description": "Select an existing learning path from the sidebar"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the corresponding curriculum graph is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the selected path details are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC005",
+    "title": "Answer a topic question and see a passing result",
+    "description": "Verifies that a learner can submit an answer to an evaluation question and receive passing feedback when the response is correct.",
+    "category": "Question Answering",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open an existing learning path"
+      },
+      {
+        "type": "action",
+        "description": "Select a topic node with an evaluation question"
+      },
+      {
+        "type": "action",
+        "description": "Enter a correct answer in the response field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the answer"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify passing evaluation feedback is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC006",
+    "title": "Create a new learning path from a goal",
+    "description": "An authenticated learner can open the new path flow, submit a learning goal, and start a new personalized learning path.",
+    "category": "Sidebar and Path History",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Enter {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Enter {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the authentication form"
+      },
+      {
+        "type": "action",
+        "description": "Open the new path flow"
+      },
+      {
+        "type": "action",
+        "description": "Enter a learning goal into the goal field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the new path form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a new learning path is initialized"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC007",
+    "title": "Generate resources for a pending topic",
+    "description": "An authenticated learner can open a pending topic and generate curated resources for it.",
+    "category": "Path Graph Canvas",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Enter {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Enter {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the authentication form"
+      },
+      {
+        "type": "action",
+        "description": "Select an existing learning path from the sidebar"
+      },
+      {
+        "type": "action",
+        "description": "Select a pending topic node in the curriculum graph"
+      },
+      {
+        "type": "action",
+        "description": "Generate resources for the selected topic"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify curated resources are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC008",
+    "title": "Pan and zoom the curriculum graph",
+    "description": "An authenticated learner can explore the curriculum graph by panning and zooming without losing access to the path view.",
+    "category": "Path Graph Canvas",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Enter {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Enter {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the authentication form"
+      },
+      {
+        "type": "action",
+        "description": "Select an existing learning path from the sidebar"
+      },
+      {
+        "type": "action",
+        "description": "Pan the curriculum graph canvas"
+      },
+      {
+        "type": "action",
+        "description": "Zoom the curriculum graph canvas"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the curriculum graph remains displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC009",
+    "title": "Open a new learning path from a goal",
+    "description": "Verifies that an authenticated learner can create a new personalized curriculum graph from a learning goal and begin the first available topic.",
+    "category": "Create New Learning Path",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the new path flow"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a learning goal"
+      },
+      {
+        "type": "action",
+        "description": "Create the new learning path"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a personalized curriculum graph is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the first available topic is accessible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC010",
+    "title": "Answer a topic evaluation question and see feedback",
+    "description": "An authenticated learner can answer a topic evaluation question and receive pass or fail feedback in the learning interface.",
+    "category": "Path Graph Canvas",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Enter {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Enter {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the authentication form"
+      },
+      {
+        "type": "action",
+        "description": "Select an existing learning path from the sidebar"
+      },
+      {
+        "type": "action",
+        "description": "Select a topic node in the curriculum graph"
+      },
+      {
+        "type": "action",
+        "description": "Answer the evaluation question"
+      },
+      {
+        "type": "action",
+        "description": "Submit the evaluation answer"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify evaluation feedback is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC011",
+    "title": "View cached resources for an available topic",
+    "description": "Verifies that a learner can open a topic that already has cached resources and review the resource list.",
+    "category": "Node Resource Generation and Viewing",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open an existing learning path"
+      },
+      {
+        "type": "action",
+        "description": "Select a topic node with cached resources"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify curated resources are displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the resource list is available"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC012",
+    "title": "Review previously created learning paths",
+    "description": "An authenticated learner can view their saved learning paths in path history and recognize available past journeys.",
+    "category": "Sidebar and Path History",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Enter {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Enter {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the authentication form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the path history list is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC013",
+    "title": "Resume a past learning path from history",
+    "description": "Verifies that a returning learner can open a previous path from history and continue with the next unlocked topic.",
+    "category": "Path History",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the path history section"
+      },
+      {
+        "type": "action",
+        "description": "Select a previous learning path"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the selected learning path is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the next unlocked topic is available"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC014",
+    "title": "Open an external resource link from a topic",
+    "description": "Verifies that a learner can open a curated resource link from a selected topic.",
+    "category": "Node Resource Generation and Viewing",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open an existing learning path"
+      },
+      {
+        "type": "action",
+        "description": "Select a topic node with cached resources"
+      },
+      {
+        "type": "action",
+        "description": "Open one of the external resource links"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the resource opens successfully"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC015",
+    "title": "Open a curated external resource from a topic",
+    "description": "An authenticated learner can open a cached external resource link from a topic and return to the learning view with the resource preserved.",
+    "category": "Path Graph Canvas",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Enter {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Enter {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the authentication form"
+      },
+      {
+        "type": "action",
+        "description": "Select an existing learning path from the sidebar"
+      },
+      {
+        "type": "action",
+        "description": "Select a topic node in the curriculum graph"
+      },
+      {
+        "type": "action",
+        "description": "Open a curated resource link"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the resource content is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC016",
+    "title": "Switch between learning path histories and selected nodes",
+    "description": "Verifies that a learner can move between different past paths and keep the curriculum graph and node details in sync with the selection.",
+    "category": "Path History",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the path history section"
+      },
+      {
+        "type": "action",
+        "description": "Select one previous learning path"
+      },
+      {
+        "type": "action",
+        "description": "Select a different learning path"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the displayed curriculum graph updates to the newly selected path"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the selected node details match the current path"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC017",
+    "title": "Answer a topic question and see a failing result",
+    "description": "Verifies that a learner can submit an incomplete or incorrect answer and receive failing evaluation feedback.",
+    "category": "Question Answering",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open an existing learning path"
+      },
+      {
+        "type": "action",
+        "description": "Select a topic node with an evaluation question"
+      },
+      {
+        "type": "action",
+        "description": "Enter an incomplete answer in the response field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the answer"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify failing evaluation feedback is displayed"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC018",
+    "title": "Switch between sign in and sign up views",
+    "description": "A learner can toggle between sign in and sign up modes on the authentication screen and see the form update accordingly.",
+    "category": "User Authentication",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Toggle to the sign up view"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the sign up form is displayed"
+      },
+      {
+        "type": "action",
+        "description": "Toggle back to the sign in view"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the sign in form is displayed"
+      }
+    ],
+    "priority": "Low"
+  }
+]
